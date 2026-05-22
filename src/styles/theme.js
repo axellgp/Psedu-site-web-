@@ -53,6 +53,8 @@ export const theme = {
       champagne: '#efe3d3',
       foam: '#f7fbfd',
       sage: '#8da392',
+      deepSea: '#0a1d37',
+      neonBlue: '#00f2ff',
     },
     neutral: {
       white: '#ffffff',
@@ -79,6 +81,7 @@ export const theme = {
       glassStrong: 'rgba(255, 255, 255, 0.9)',
       overlay: 'rgba(14, 36, 57, 0.16)',
       border: 'rgba(18, 58, 99, 0.09)',
+      deep: 'rgba(10, 29, 55, 0.95)',
     },
     gradients: {
       hero: 'linear-gradient(120deg, rgba(255, 249, 242, 0.92) 0%, rgba(245, 236, 223, 0.74) 38%, rgba(225, 239, 247, 0.6) 100%)',
@@ -88,6 +91,8 @@ export const theme = {
       cta: 'linear-gradient(135deg, #123a63 0%, #2f6da2 50%, #5fa7c8 100%)',
       button: 'linear-gradient(135deg, #123a63 0%, #2f6da2 100%)',
       warm: 'linear-gradient(135deg, rgba(215, 178, 119, 0.24), rgba(215, 141, 111, 0.16))',
+      nautical: 'linear-gradient(135deg, #0a1d37 0%, #123a63 100%)',
+      game: 'linear-gradient(135deg, #2f6da2 0%, #5fa7c8 100%)',
     },
     success: '#4b9b72',
     warning: '#c6943d',
@@ -164,6 +169,7 @@ export const theme = {
     xl: '0 46px 120px rgba(18, 33, 49, 0.16)',
     glow: '0 0 0 1px rgba(47, 109, 162, 0.08), 0 24px 60px rgba(47, 109, 162, 0.12)',
     inner: 'inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+    neon: '0 0 15px rgba(0, 242, 255, 0.5), 0 0 30px rgba(0, 242, 255, 0.2)',
   },
 
   radii: {
@@ -182,6 +188,7 @@ export const theme = {
     fast: '180ms cubic-bezier(0.2, 0.8, 0.2, 1)',
     normal: '320ms cubic-bezier(0.16, 1, 0.3, 1)',
     slow: '650ms cubic-bezier(0.19, 1, 0.22, 1)',
+    bounce: '500ms cubic-bezier(0.68, -0.6, 0.32, 1.6)',
   },
 
   zIndices: {

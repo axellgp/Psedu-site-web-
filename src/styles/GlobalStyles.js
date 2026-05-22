@@ -173,10 +173,30 @@ const GlobalStyles = createGlobalStyle`
     font-weight: ${({ theme }) => theme.fontWeights.semibold};
     letter-spacing: 0.02em;
     box-shadow: ${({ theme }) => theme.shadows.sm};
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s ease;
+  }
+
+  .btn:hover::after {
+    transform: translateX(100%);
   }
 
   .btn:hover {
     transform: translateY(-2px);
+    box-shadow: ${({ theme }) => theme.shadows.md};
+  }
+
+  .btn:active {
+    transform: translateY(0);
   }
 
   .btn-primary {
@@ -201,6 +221,15 @@ const GlobalStyles = createGlobalStyle`
     color: ${({ theme }) => theme.colors.primary.dark};
     background: linear-gradient(135deg, ${({ theme }) => theme.colors.accent.gold}, ${({ theme }) => theme.colors.accent.champagne});
     border-color: transparent;
+  }
+
+  .btn-game {
+    color: white;
+    background: ${({ theme }) => theme.colors.gradients.game};
+    box-shadow: 0 4px 15px rgba(47, 109, 162, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 800;
   }
 
   .glass-panel {
@@ -263,6 +292,6 @@ const GlobalStyles = createGlobalStyle`
       scroll-behavior: auto !important;
     }
   }
-`
+`;
 
 export default GlobalStyles

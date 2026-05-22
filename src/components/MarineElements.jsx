@@ -33,6 +33,17 @@ const sway = keyframes`
   }
 `
 
+const pulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.5;
+  }
+`
+
 const Field = styled.div`
   position: absolute;
   inset: 0;
@@ -84,10 +95,23 @@ const Ribbon = styled.span`
   animation-delay: ${({ $delay }) => $delay}s;
 `
 
+const Glow = styled.div`
+  position: absolute;
+  width: ${({ $size }) => $size};
+  height: ${({ $size }) => $size};
+  left: ${({ $left }) => $left};
+  top: ${({ $top }) => $top};
+  background: radial-gradient(circle, ${({ $color }) => $color} 0%, transparent 70%);
+  opacity: ${({ $opacity }) => $opacity};
+  animation: ${pulse} ${({ $duration }) => $duration}s ease-in-out infinite;
+  animation-delay: ${({ $delay }) => $delay}s;
+  filter: blur(20px);
+`
+
 const densityMap = {
-  light: { bubbles: 7, currents: 3, ribbons: 2 },
-  normal: { bubbles: 12, currents: 5, ribbons: 3 },
-  heavy: { bubbles: 18, currents: 7, ribbons: 4 },
+  light: { bubbles: 7, currents: 3, ribbons: 2, glows: 2 },
+  normal: { bubbles: 12, currents: 5, ribbons: 3, glows: 3 },
+  heavy: { bubbles: 18, currents: 7, ribbons: 4, glows: 5 },
 }
 
 const createBubbleConfig = (index, divingTheme) => ({
@@ -121,6 +145,16 @@ const createRibbonConfig = (index, divingTheme) => ({
   duration: 16 + (index % 3) * 5,
   opacity: divingTheme ? 0.22 : 0.12,
   from: divingTheme ? 'rgba(88, 199, 212, 0.34)' : 'rgba(255, 255, 255, 0.18)',
+})
+
+const createGlowConfig = (index, divingTheme) => ({
+  size: `${300 + (index % 3) * 200}px`,
+  left: `${(index * 30) % 100}%`,
+  top: `${(index * 40) % 100}%`,
+  delay: index * 2,
+  duration: 5 + (index % 5),
+  opacity: divingTheme ? 0.4 : 0.2,
+  color: divingTheme ? '#5fa7c8' : '#efe3d3',
 })
 
 export const MarineFloat = ({ position = {}, duration = 10, delay = 0, size = '42px', color }) => (
@@ -167,6 +201,22 @@ export const MarineElements = ({ density = 'normal', divingTheme = false }) => {
 
   return (
     <Field aria-hidden="true">
+      {Array.from({ length: config.glows }, (_, index) => {
+        const glow = createGlowConfig(index, divingTheme)
+        return (
+          <Glow
+            key={`glow-${index}`}
+            $size={glow.size}
+            $left={glow.left}
+            $top={glow.top}
+            $delay={glow.delay}
+            $duration={glow.duration}
+            $opacity={glow.opacity}
+            $color={glow.color}
+          />
+        )
+      })}
+
       {Array.from({ length: config.bubbles }, (_, index) => {
         const bubble = createBubbleConfig(index, divingTheme)
         return (

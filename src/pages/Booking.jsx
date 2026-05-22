@@ -1,17 +1,31 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import styled from 'styled-components'
-import { motion } from 'framer-motion'
-import { Calendar, Users, Mail, Phone, MessageSquare, CreditCard, Check, AlertCircle, Home } from 'lucide-react'
+import { useParams, useNavigate } from 'react-router-dom'
+import styled, { keyframes, useTheme } from 'styled-components'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Anchor,
+  Compass,
+  Users,
+  Calendar,
+  Check,
+  AlertCircle,
+  ArrowRight,
+  ArrowLeft,
+  Ship,
+  MapPin,
+  Waves
+} from 'lucide-react'
 import { useBooking } from '../context/BookingContext'
-import { useAuth } from '../context/AuthContext'
-import { useLogs } from '../context/LogsContext'
-import { MarineElements } from '../components/MarineElements'
+import MarineElements from '../components/MarineElements'
+import { toast } from 'react-hot-toast'
+
+// --- Styled Components ---
 
 const Container = styled.div`
   min-height: 100vh;
-  padding: 2rem 0;
-  background: linear-gradient(135deg, ${props => props.theme.colors.lightBlue} 0%, ${props => props.theme.colors.cream} 100%);
+  background: #0a1d37;
+  color: white;
+  padding: 8rem 2rem 4rem;
   position: relative;
   overflow: hidden;
 `
@@ -19,707 +33,434 @@ const Container = styled.div`
 const Content = styled.div`
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 2rem;
+  position: relative;
+  z-index: 10;
+`
+
+const StepIndicator = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 4rem;
+`
+
+const StepDot = styled.div`
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: ${({ $active, $completed, theme }) =>
+    $active ? theme.colors.accent.gold : $completed ? theme.colors.success : 'rgba(255,255,255,0.2)'};
+  transition: all 0.3s ease;
+  box-shadow: ${({ $active, theme }) => $active ? `0 0 15px ${theme.colors.accent.gold}` : 'none'};
+`
+
+const Card = styled(motion.div)`
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 32px;
+  padding: 3rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+`
+
+const FleetGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 3rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+`
+
+const ShipCard = styled(motion.div)`
+  cursor: pointer;
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  height: 400px;
+  border: 2px solid ${({ $selected, theme }) => $selected ? theme.colors.accent.gold : 'transparent'};
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+  }
+
+  &:hover img {
+    transform: scale(1.1);
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(10, 29, 55, 0.9), transparent);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+`
+
+const SliderContainer = styled.div`
+  margin: 3rem 0;
+`
+
+const CustomSlider = styled.input`
+  width: 100%;
+  appearance: none;
+  background: rgba(255,255,255,0.1);
+  height: 8px;
+  border-radius: 4px;
+  outline: none;
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: ${({ theme }) => theme.colors.accent.gold};
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 15px ${({ theme }) => theme.colors.accent.gold};
+  }
+`
+
+const FormGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    gap: 2rem;
   }
 `
 
-const BookingForm = styled(motion.div)`
-  background: white;
-  border-radius: 20px;
-  padding: 2.5rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-`
+const InputWrapper = styled.div`
+  position: relative;
 
-const RoomSummary = styled(motion.div)`
-  background: white;
-  border-radius: 20px;
-  padding: 2rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  height: fit-content;
-  position: sticky;
-  top: 2rem;
-`
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    opacity: 0.7;
+  }
 
-const Title = styled.h1`
-  font-family: ${props => props.theme.fonts.heading};
-  font-size: 2.5rem;
-  color: ${props => props.theme.colors.primary};
-  margin-bottom: 2rem;
-  text-align: center;
-`
+  input, textarea {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    width: 100%;
+    font-size: 1.1rem;
 
-const SectionTitle = styled.h2`
-  font-family: ${props => props.theme.fonts.heading};
-  font-size: 1.8rem;
-  color: ${props => props.theme.colors.primary};
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`
-
-const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
-`
-
-const Label = styled.label`
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-  color: ${props => props.theme.colors.primary};
-`
-
-const Input = styled.input`
-  width: 100%;
-  padding: 1rem;
-  border: 2px solid ${props => props.theme.colors.lightGray};
-  border-radius: 10px;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.colors.secondary};
+    &:focus {
+      border-color: ${({ theme }) => theme.colors.accent.gold};
+      outline: none;
+    }
   }
 `
 
-const TextArea = styled.textarea`
-  width: 100%;
-  padding: 1rem;
-  border: 2px solid ${props => props.theme.colors.lightGray};
-  border-radius: 10px;
-  font-size: 1rem;
-  min-height: 100px;
-  resize: vertical;
-  transition: all 0.3s ease;
-
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.colors.secondary};
-  }
-`
-
-const DateGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-`
-
-const GuestSelect = styled.select`
-  width: 100%;
-  padding: 1rem;
-  border: 2px solid ${props => props.theme.colors.lightGray};
-  border-radius: 10px;
-  font-size: 1rem;
-  background: white;
-  transition: all 0.3s ease;
-
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.colors.secondary};
-  }
-`
-
-const RoomImage = styled.img`
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  border-radius: 15px;
-  margin-bottom: 1rem;
-`
-
-const RoomName = styled.h3`
-  font-family: ${props => props.theme.fonts.heading};
-  font-size: 1.5rem;
-  color: ${props => props.theme.colors.primary};
-  margin-bottom: 0.5rem;
-`
-
-const RoomType = styled.span`
-  background: ${props => props.theme.colors.secondary};
-  color: white;
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: 600;
-`
-
-const RoomDetails = styled.div`
-  margin: 1rem 0;
-  font-size: 0.95rem;
-  color: ${props => props.theme.colors.darkGray};
-  line-height: 1.6;
-`
-
-const PriceSection = styled.div`
-  background: ${props => props.theme.colors.lightBlue};
-  padding: 1.5rem;
-  border-radius: 15px;
-  margin: 1.5rem 0;
-`
-
-const PriceRow = styled.div`
+const NavButtons = styled.div`
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
-  font-size: 0.95rem;
-
-  &.total {
-    border-top: 2px solid ${props => props.theme.colors.primary};
-    padding-top: 0.5rem;
-    margin-top: 1rem;
-    font-weight: 600;
-    font-size: 1.1rem;
-  }
+  margin-top: 4rem;
 `
 
-const SeasonInfo = styled.div`
-  background: ${props => props.theme.colors.cream};
-  padding: 1rem;
-  border-radius: 10px;
-  margin: 1rem 0;
-  font-size: 0.9rem;
-  color: ${props => props.theme.colors.darkGray};
-`
-
-const SubmitButton = styled(motion.button)`
-  width: 100%;
-  padding: 1.2rem;
-  background: linear-gradient(135deg, ${props => props.theme.colors.primary} 0%, ${props => props.theme.colors.secondary} 100%);
-  color: white;
-  border: none;
-  border-radius: 15px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
+const Button = styled(motion.button)`
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 2rem;
+  gap: 0.75rem;
+  padding: 1rem 2rem;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &.primary {
+    background: ${({ theme }) => theme.colors.accent.gold};
+    color: white;
+  }
+
+  &.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
 
   &:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 `
 
-const ErrorMessage = styled.div`
-  background: #fee;
-  color: #d63384;
-  padding: 1rem;
-  border-radius: 10px;
-  margin: 1rem 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`
-
-const SuccessMessage = styled.div`
-  background: #d1e7dd;
-  color: #0f5132;
-  padding: 1rem;
-  border-radius: 10px;
-  margin: 1rem 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`
-
-const BackButton = styled(motion.button)`
-  background: transparent;
-  border: 2px solid ${props => props.theme.colors.primary};
-  color: ${props => props.theme.colors.primary};
-  padding: 0.8rem 1.5rem;
-  border-radius: 10px;
-  cursor: pointer;
-  margin-bottom: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`
+// --- Components ---
 
 const Booking = () => {
-  const { id: roomId } = useParams()
-  const location = useLocation()
+  const { id } = useParams()
   const navigate = useNavigate()
-  const { rooms, createBookingRequest, getRoomPrice, getCurrentSeason, isRoomAvailable } = useBooking()
-  const { user } = useAuth()
-  const { addLog } = useLogs()
-  const userDisplayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ')
-  
-  const [room, setRoom] = useState(null)
+  const { rooms, createBookingRequest } = useBooking()
+  const theme = useTheme()
+
+  const [step, setStep] = useState(1)
+  const [selectedRoom, setSelectedRoom] = useState(null)
   const [formData, setFormData] = useState({
     checkIn: '',
     checkOut: '',
-    guests: 2,
-    guestName: userDisplayName || '',
-    email: user?.email || '',
+    guests: 1,
+    guestName: '',
+    email: '',
     phone: '',
     requests: ''
   })
-  const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [successMessage, setSuccessMessage] = useState('')
-  const [totalPrice, setTotalPrice] = useState(0)
-  const [nights, setNights] = useState(0)
-  const [season, setSeason] = useState('')
 
   useEffect(() => {
-    // Récupérer l'ID de la chambre depuis les paramètres d'URL ou les query parameters
-    let selectedRoomId = roomId
-    
-    if (!selectedRoomId) {
-      const urlParams = new URLSearchParams(location.search)
-      selectedRoomId = urlParams.get('room')
+    if (id) {
+      const room = rooms.find(r => r.id === id)
+      if (room) setSelectedRoom(room)
     }
-    
-    if (selectedRoomId) {
-      const selectedRoom = rooms.find(r => r.id === parseInt(selectedRoomId))
-      if (selectedRoom) {
-        setRoom(selectedRoom)
-      }
-    }
-  }, [roomId, location.search, rooms])
+  }, [id, rooms])
 
-  useEffect(() => {
-    if (room && formData.checkIn && formData.checkOut) {
-      const startDate = new Date(formData.checkIn)
-      const endDate = new Date(formData.checkOut)
-      const nightCount = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))
-      
-      if (nightCount > 0) {
-        setNights(nightCount)
-        const price = getRoomPrice(room.id, formData.checkIn, formData.checkOut)
-        setTotalPrice(price)
-        setSeason(getCurrentSeason(formData.checkIn))
-      }
-    }
-  }, [room, formData.checkIn, formData.checkOut, getRoomPrice, getCurrentSeason])
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }))
-    }
-  }
-
-  const validateForm = () => {
-    const newErrors = {}
-    
-    if (!formData.checkIn) newErrors.checkIn = 'Date d\'arrivée requise'
-    if (!formData.checkOut) newErrors.checkOut = 'Date de départ requise'
-    if (!formData.guestName.trim()) newErrors.guestName = 'Nom requis'
-    if (!formData.email.trim()) newErrors.email = 'Email requis'
-    if (!formData.phone.trim()) newErrors.phone = 'Téléphone requis'
-    
-    if (formData.checkIn && formData.checkOut) {
-      const startDate = new Date(formData.checkIn)
-      const endDate = new Date(formData.checkOut)
-      
-      if (startDate >= endDate) {
-        newErrors.checkOut = 'La date de départ doit être après la date d\'arrivée'
-      }
-      
-      if (startDate < new Date()) {
-        newErrors.checkIn = 'La date d\'arrivée ne peut pas être dans le passé'
-      }
-      
-      if (room && !isRoomAvailable(room.id, formData.checkIn, formData.checkOut)) {
-        newErrors.availability = 'Cet appartement n\'est pas disponible pour ces dates'
-      }
-    }
-    
-    if (room && formData.guests > room.capacity) {
-      newErrors.guests = `Capacité maximale : ${room.capacity} personnes`
-    }
-    
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+  const handleNext = () => setStep(s => s + 1)
+  const handleBack = () => setStep(s => s - 1)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    if (!validateForm()) return
-    
     setIsSubmitting(true)
     
     try {
-      const bookingRequest = createBookingRequest({
-        roomId: room.id,
-        ...formData
+      await createBookingRequest({
+        ...formData,
+        roomId: selectedRoom.id,
+        roomName: selectedRoom.name
       })
-      
-      // Ajouter un log de la demande de réservation
-      addLog('booking', 'request', {
-        roomId: room.id,
-        roomName: room.name,
-        guestName: formData.guestName,
-        checkIn: formData.checkIn,
-        checkOut: formData.checkOut,
-        guests: formData.guests,
-        totalPrice
-      }, user?.id)
-      
-      setSuccessMessage('Votre demande de réservation a été envoyée ! Nous vous contacterons bientôt pour la confirmer.')
-      
-      // Reset form
-      setFormData({
-        checkIn: '',
-        checkOut: '',
-        guests: 2,
-        guestName: userDisplayName || '',
-        email: user?.email || '',
-        phone: '',
-        requests: ''
-      })
-      
-      // Rediriger vers la page d'accueil après 3 secondes
-      setTimeout(() => {
-        navigate('/rooms')
-      }, 3000)
-      
+      toast.success('Demande de réservation envoyée !')
+      setStep(4) // Final Step
     } catch (error) {
-      setErrors({ submit: 'Une erreur est survenue. Veuillez réessayer.' })
+      toast.error('Erreur lors de l\'envoi')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const getSeasonName = (seasonKey) => {
-    const seasons = {
-      lowSeason: 'Basse saison',
-      midSeason: 'Moyenne saison',
-      highSeason: 'Haute saison'
-    }
-    return seasons[seasonKey] || ''
-  }
-
-  const getSeasonDates = (seasonKey) => {
-    const dates = {
-      lowSeason: '10 octobre - 1er mai',
-      midSeason: '30 avril - 8 juillet & 28 août - 9 octobre',
-      highSeason: '9 juillet - 27 août'
-    }
-    return dates[seasonKey] || ''
-  }
-
-  if (!room) {
-    return (
-      <Container>
-        <MarineElements density="light" />
-        <Content style={{ gridTemplateColumns: '1fr', maxWidth: '800px' }}>
-          <BookingForm
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+  const renderStep1 = () => (
+    <motion.div
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+    >
+      <h2 style={{ fontSize: '3rem', marginBottom: '2rem', textAlign: 'center' }}>Choisissez votre port</h2>
+      <FleetGrid>
+        {rooms.map(room => (
+          <ShipCard
+            key={room.id}
+            $selected={selectedRoom?.id === room.id}
+            onClick={() => setSelectedRoom(room)}
+            whileHover={{ y: -10 }}
           >
-            <BackButton
-              onClick={() => navigate(-1)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              ← Retour
-            </BackButton>
-
-            <Title>Choisir un appartement</Title>
-            
-            <SectionTitle>
-              <Home size={24} />
-              Sélectionnez l'appartement de votre choix
-            </SectionTitle>
-
-            <div style={{ display: 'grid', gap: '1.5rem' }}>
-              {rooms.map(apartment => (
-                <div
-                  key={apartment.id}
-                  style={{
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '12px',
-                    padding: '1.5rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    background: 'white'
-                  }}
-                  onClick={() => {
-                    const selectedRoom = rooms.find(r => r.id === apartment.id)
-                    setRoom(selectedRoom)
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#2c5aa0'
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(44, 90, 160, 0.1)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e0e0e0'
-                    e.currentTarget.style.boxShadow = 'none'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h3 style={{ 
-                        margin: '0 0 0.5rem 0', 
-                        color: '#2c5aa0',
-                        fontFamily: 'Playfair Display, serif',
-                        fontSize: '1.5rem'
-                      }}>
-                        {apartment.name}
-                      </h3>
-                      <p style={{ 
-                        margin: '0 0 1rem 0', 
-                        color: '#666',
-                        lineHeight: '1.6'
-                      }}>
-                        {apartment.description}
-                      </p>
-                      <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#666' }}>
-                        <span>👥 {apartment.capacity} personnes</span>
-                        <span>📐 {apartment.size} m²</span>
-                        <span>🏠 {apartment.type}</span>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '1.2rem', fontWeight: '600', color: '#2c5aa0' }}>
-                        À partir de {Math.min(apartment.price.lowSeason, apartment.price.midSeason, apartment.price.highSeason)}€/semaine
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <img src={room.images[0]} alt={room.name} />
+            <div className="overlay">
+              <h3 style={{ fontSize: '1.8rem', margin: 0 }}>{room.name}</h3>
+              <p style={{ opacity: 0.8, fontSize: '0.9rem' }}>{room.type}</p>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Users size={16} /> {room.capacity}
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <MapPin size={16} /> {room.size}
+                </span>
+              </div>
             </div>
-          </BookingForm>
-        </Content>
-      </Container>
-    )
-  }
+            {selectedRoom?.id === room.id && (
+              <div style={{ position: 'absolute', top: '1rem', right: '1rem', background: theme.colors.accent.gold, borderRadius: '50%', p: '0.5rem' }}>
+                <Check size={20} color="white" />
+              </div>
+            )}
+          </ShipCard>
+        ))}
+      </FleetGrid>
+      <NavButtons>
+        <div />
+        <Button
+          className="primary"
+          disabled={!selectedRoom}
+          onClick={handleNext}
+        >
+          Continuer <ArrowRight size={20} />
+        </Button>
+      </NavButtons>
+    </motion.div>
+  )
+
+  const renderStep2 = () => (
+    <motion.div
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+    >
+      <h2 style={{ fontSize: '3rem', marginBottom: '2rem', textAlign: 'center' }}>Préparez le voyage</h2>
+      <FormGrid>
+        <InputWrapper>
+          <label><Calendar size={16} /> Arrivée</label>
+          <input
+            type="date"
+            value={formData.checkIn}
+            onChange={e => setFormData({...formData, checkIn: e.target.value})}
+          />
+        </InputWrapper>
+        <InputWrapper>
+          <label><Calendar size={16} /> Départ</label>
+          <input
+            type="date"
+            value={formData.checkOut}
+            onChange={e => setFormData({...formData, checkOut: e.target.value})}
+          />
+        </InputWrapper>
+      </FormGrid>
+
+      <SliderContainer>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+          <Users size={24} /> Nombre de passagers : <span style={{ color: theme.colors.accent.gold, fontSize: '2rem', fontWeight: 800 }}>{formData.guests}</span>
+        </label>
+        <CustomSlider
+          type="range"
+          min="1"
+          max={selectedRoom.capacity}
+          value={formData.guests}
+          onChange={e => setFormData({...formData, guests: parseInt(e.target.value)})}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', opacity: 0.5 }}>
+          <span>1 voyageur</span>
+          <span>Max {selectedRoom.capacity} voyageurs</span>
+        </div>
+      </SliderContainer>
+
+      <NavButtons>
+        <Button className="secondary" onClick={handleBack}>
+          <ArrowLeft size={20} /> Retour
+        </Button>
+        <Button
+          className="primary"
+          disabled={!formData.checkIn || !formData.checkOut}
+          onClick={handleNext}
+        >
+          Continuer <ArrowRight size={20} />
+        </Button>
+      </NavButtons>
+    </motion.div>
+  )
+
+  const renderStep3 = () => (
+    <motion.div
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+    >
+      <h2 style={{ fontSize: '3rem', marginBottom: '2rem', textAlign: 'center' }}>Signez le manifeste</h2>
+      <form onSubmit={handleSubmit}>
+        <FormGrid>
+          <InputWrapper>
+            <label>Nom complet</label>
+            <input
+              required
+              type="text"
+              placeholder="Nom du capitaine"
+              value={formData.guestName}
+              onChange={e => setFormData({...formData, guestName: e.target.value})}
+            />
+          </InputWrapper>
+          <InputWrapper>
+            <label>Email</label>
+            <input
+              required
+              type="email"
+              placeholder="votre@email.com"
+              value={formData.email}
+              onChange={e => setFormData({...formData, email: e.target.value})}
+            />
+          </InputWrapper>
+          <InputWrapper>
+            <label>Téléphone</label>
+            <input
+              required
+              type="tel"
+              placeholder="06 00 00 00 00"
+              value={formData.phone}
+              onChange={e => setFormData({...formData, phone: e.target.value})}
+            />
+          </InputWrapper>
+          <InputWrapper>
+            <label>Requêtes spéciales</label>
+            <textarea
+              rows="4"
+              placeholder="Comment pouvons-nous améliorer votre séjour ?"
+              value={formData.requests}
+              onChange={e => setFormData({...formData, requests: e.target.value})}
+            />
+          </InputWrapper>
+        </FormGrid>
+
+        <NavButtons>
+          <Button className="secondary" type="button" onClick={handleBack}>
+            <ArrowLeft size={20} /> Retour
+          </Button>
+          <Button className="primary" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Embarquement...' : 'Demander la réservation'} <Ship size={20} />
+          </Button>
+        </NavButtons>
+      </form>
+    </motion.div>
+  )
+
+  const renderStep4 = () => (
+    <motion.div
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      style={{ textAlign: 'center' }}
+    >
+      <div style={{
+        width: '100px',
+        height: '100px',
+        background: theme.colors.success,
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        margin: '0 auto 2rem'
+      }}>
+        <Check size={64} color="white" />
+      </div>
+      <h2 style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>Bon voyage !</h2>
+      <p style={{ fontSize: '1.2rem', opacity: 0.8, maxWidth: '600px', margin: '0 auto 3rem' }}>
+        Votre demande de réservation pour le **{selectedRoom.name}** a été envoyée au port.
+        Le capitaine reviendra vers vous très rapidement par email.
+      </p>
+      <Button className="primary" style={{ margin: '0 auto' }} onClick={() => navigate('/')}>
+        Retour à l'accueil
+      </Button>
+    </motion.div>
+  )
 
   return (
     <Container>
-      <MarineElements density="light" />
+      <MarineElements density="normal" divingTheme />
       <Content>
-        <BookingForm
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <BackButton
-            onClick={() => navigate(-1)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            ← Retour
-          </BackButton>
+        <StepIndicator>
+          {[1, 2, 3].map(i => (
+            <StepDot
+              key={i}
+              $active={step === i}
+              $completed={step > i}
+            />
+          ))}
+        </StepIndicator>
 
-          <Title>Demande de réservation - {room.name}</Title>
-
-          {successMessage && (
-            <SuccessMessage>
-              <Check size={20} />
-              {successMessage}
-            </SuccessMessage>
-          )}
-
-          {errors.submit && (
-            <ErrorMessage>
-              <AlertCircle size={20} />
-              {errors.submit}
-            </ErrorMessage>
-          )}
-
-          {errors.availability && (
-            <ErrorMessage>
-              <AlertCircle size={20} />
-              {errors.availability}
-            </ErrorMessage>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <SectionTitle>
-              <Calendar size={24} />
-              Dates de séjour
-            </SectionTitle>
-
-            <DateGrid>
-              <FormGroup>
-                <Label>Arrivée</Label>
-                <Input
-                  type="date"
-                  name="checkIn"
-                  value={formData.checkIn}
-                  onChange={handleInputChange}
-                  min={new Date().toISOString().split('T')[0]}
-                />
-                {errors.checkIn && <ErrorMessage>{errors.checkIn}</ErrorMessage>}
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Départ</Label>
-                <Input
-                  type="date"
-                  name="checkOut"
-                  value={formData.checkOut}
-                  onChange={handleInputChange}
-                  min={formData.checkIn || new Date().toISOString().split('T')[0]}
-                />
-                {errors.checkOut && <ErrorMessage>{errors.checkOut}</ErrorMessage>}
-              </FormGroup>
-            </DateGrid>
-
-            <FormGroup>
-              <Label>
-                <Users size={18} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                Nombre de voyageurs
-              </Label>
-              <GuestSelect
-                name="guests"
-                value={formData.guests}
-                onChange={handleInputChange}
-              >
-                {room && Array.from({ length: room.capacity }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1} {i + 1 === 1 ? 'personne' : 'personnes'}
-                  </option>
-                ))}
-              </GuestSelect>
-              {errors.guests && <ErrorMessage>{errors.guests}</ErrorMessage>}
-            </FormGroup>
-
-            <SectionTitle>
-              <Mail size={24} />
-              Informations de contact
-            </SectionTitle>
-
-            <FormGroup>
-              <Label>Nom complet</Label>
-              <Input
-                type="text"
-                name="guestName"
-                value={formData.guestName}
-                onChange={handleInputChange}
-                placeholder="Votre nom"
-              />
-              {errors.guestName && <ErrorMessage>{errors.guestName}</ErrorMessage>}
-            </FormGroup>
-
-            <FormGroup>
-              <Label>Email</Label>
-              <Input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="votre@email.com"
-              />
-              {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
-            </FormGroup>
-
-            <FormGroup>
-              <Label>
-                <Phone size={18} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                Téléphone
-              </Label>
-              <Input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                placeholder="06 12 34 56 78"
-              />
-              {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
-            </FormGroup>
-
-            <FormGroup>
-              <Label>
-                <MessageSquare size={18} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                Demandes spéciales (optionnel)
-              </Label>
-              <TextArea
-                name="requests"
-                value={formData.requests}
-                onChange={handleInputChange}
-                placeholder="Lit bébé, arrivée tardive, régime alimentaire..."
-              />
-            </FormGroup>
-
-            <SubmitButton
-              type="submit"
-              disabled={isSubmitting}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              {isSubmitting ? (
-                'Envoi en cours...'
-              ) : (
-                <>
-                  <CreditCard size={20} />
-                  Demander la réservation
-                </>
-              )}
-            </SubmitButton>
-          </form>
-        </BookingForm>
-
-        <RoomSummary
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          <RoomImage src={room.images[0]} alt={room.name} />
-          <RoomName>{room.name}</RoomName>
-          <RoomType>{room.type} - {room.size}</RoomType>
-          
-          <RoomDetails>
-            <strong>Capacité :</strong> Jusqu'à {room.capacity} personnes<br />
-            <strong>Equipements :</strong> {room.amenities.slice(0, 3).join(', ')}...
-          </RoomDetails>
-
-          {formData.checkIn && formData.checkOut && nights > 0 && (
-            <>
-              <PriceSection>
-                <PriceRow>
-                  <span>Prix par semaine ({getSeasonName(season)}):</span>
-                  <span>{room.price[season]}€</span>
-                </PriceRow>
-                <PriceRow>
-                  <span>Nombre de nuits:</span>
-                  <span>{nights}</span>
-                </PriceRow>
-                <PriceRow className="total">
-                  <span>Total:</span>
-                  <span>{totalPrice}€</span>
-                </PriceRow>
-              </PriceSection>
-
-              {season && (
-                <SeasonInfo>
-                  <strong>{getSeasonName(season)}</strong><br />
-                  {getSeasonDates(season)}
-                </SeasonInfo>
-              )}
-            </>
-          )}
-
-          <div style={{ fontSize: '0.9rem', color: '#666', marginTop: '1rem' }}>
-            ⚠️ Cette demande sera envoyée au propriétaire pour validation. 
-            Vous recevrez une confirmation par email.
-          </div>
-        </RoomSummary>
+        <AnimatePresence mode="wait">
+          <Card key={step}>
+            {step === 1 && renderStep1()}
+            {step === 2 && renderStep2()}
+            {step === 3 && renderStep3()}
+            {step === 4 && renderStep4()}
+          </Card>
+        </AnimatePresence>
       </Content>
     </Container>
   )
