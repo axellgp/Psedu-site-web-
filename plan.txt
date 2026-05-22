@@ -1,0 +1,5 @@
+1. Update base path in vite.config.js to match repository name.
+2. Update basename in src/App.jsx to match repository name.
+3. Update image path utility to use dynamic base path.
+4. Complete pre commit steps.
+5. Submit the changes.

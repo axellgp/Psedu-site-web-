@@ -12,7 +12,7 @@ export const getImagePath = (imagePath) => {
     return `/${cleanPath}`;
   } else {
     // For GitHub Pages, use the base path
-    return `/-La-Grande-Voile/${cleanPath}`;
+    return `/Psedu-site-web-/${cleanPath}`;
   }
 };
 

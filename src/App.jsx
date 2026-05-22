@@ -85,7 +85,7 @@ function App() {
         <BookingProvider>
           <LogsProvider>
             <Router
-              basename="/-La-Grande-Voile"
+              basename="/Psedu-site-web-"
               future={{
                 v7_startTransition: true,
                 v7_relativeSplatPath: true,
